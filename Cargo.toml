@@ -5,3 +5,8 @@ authors = ["Ben Marsh <ben.marsh@mintlayer.org>"]
 edition = "2018"
 
 [dependencies]
+zeroize = { version = "1.5.3", features = ["derive"] }
+rand = "0.8.5"
+
+[dev-dependencies]
+hex-literal = "0.3.4"
