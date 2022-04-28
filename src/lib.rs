@@ -11,11 +11,16 @@ use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 /// Secret key representation in bytes with variable size.
 #[derive(Zeroize, ZeroizeOnDrop)]
-pub struct SecretKey(pub Vec<u8>);
+pub struct SecretKey(Vec<u8>);
 
 impl SecretKey {
+    /// Create a new secret key from .
+    pub fn new(key: Vec<u8>) -> Self {
+        Self(key)
+    }
+
     /// Create a new random secret key with the specified size.
-    pub fn new(size: u8) -> Self {
+    pub fn gen(size: u8) -> Self {
         let mut rng = rand::thread_rng();
         let mut key = vec![0u8; size as usize];
         rng.fill_bytes(&mut key);
@@ -40,7 +45,7 @@ pub struct CipherState {
 
 impl Default for CipherState {
     fn default() -> Self {
-        Self::from_secret_key(SecretKey::new(16))
+        Self::from_secret_key(SecretKey::gen(16))
     }
 }
 
