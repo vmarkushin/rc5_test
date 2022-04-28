@@ -34,7 +34,7 @@ pub type Word = u64;
 const WORD_SIZE_BITS: u8 = Word::BITS as u8;
 
 /// Inner variable and parameters of the cipher.
-pub struct CipherState {
+pub struct CipherContext {
     /// Number of rounds (parameter `r`). The nominal value is 12.
     rounds_num: u8,
     /// Secret key (parameter `K`). The nominal size is 16.
@@ -43,13 +43,13 @@ pub struct CipherState {
     subkey: Zeroizing<Vec<Word>>,
 }
 
-impl Default for CipherState {
+impl Default for CipherContext {
     fn default() -> Self {
         Self::from_secret_key(SecretKey::gen(16))
     }
 }
 
-impl CipherState {
+impl CipherContext {
     const BLOCK_SIZE_BYTES: usize = 2 * WORD_SIZE_BITS as usize / u8::BITS as usize;
     const SHOULD_FIT_INTO_U32_MSG: &'static str = "word size should fit in u32";
     const BLOCK_SIZE_PROOF_MSG: &'static str = "block size = 2 * word size; qed";
@@ -182,7 +182,7 @@ fn expand_key(key: &SecretKey, rounds_num: u8) -> Vec<Word> {
     // Initialize subkey array (S) using an arithmetic progression
     // determined by the "magic constants" P and Q.
     let subkey_len = 2 * (rounds_num + 1) as usize;
-    let (p, q) = CipherState::pq();
+    let (p, q) = CipherContext::pq();
     let mut subkey = (0..subkey_len)
         .scan(p, |s, i| {
             let x = if i == 0 { Wrapping(0) } else { q };
@@ -201,7 +201,7 @@ fn expand_key(key: &SecretKey, rounds_num: u8) -> Vec<Word> {
         subkey[i] = word_a;
         let ab_mod = ((word_a + word_b).0 % WORD_SIZE_BITS as Word)
             .try_into()
-            .expect(CipherState::SHOULD_FIT_INTO_U32_MSG);
+            .expect(CipherContext::SHOULD_FIT_INTO_U32_MSG);
         word_b = Wrapping((key_words[j] + word_a + word_b).0.rotate_left(ab_mod));
         key_words[j] = word_b;
         i = (i + 1) % subkey_len;
@@ -214,27 +214,27 @@ fn expand_key(key: &SecretKey, rounds_num: u8) -> Vec<Word> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CipherState, SecretKey};
+    use crate::{CipherContext, SecretKey};
 
     use std::convert::TryInto;
 
     fn encode(key: SecretKey, rounds_num: u8, plaintext: Vec<u8>) -> Vec<u8> {
-        let state = CipherState::new(rounds_num, key);
+        let state = CipherContext::new(rounds_num, key);
         let err = format!(
             "Invalid message size: {} != {}",
             plaintext.len(),
-            CipherState::BLOCK_SIZE_BYTES
+            CipherContext::BLOCK_SIZE_BYTES
         );
         let ciphertext = state.encode(plaintext.try_into().expect(&err));
         ciphertext.to_vec()
     }
 
     fn decode(key: SecretKey, rounds_num: u8, ciphertext: Vec<u8>) -> Vec<u8> {
-        let state = CipherState::new(rounds_num, key);
+        let state = CipherContext::new(rounds_num, key);
         let err = format!(
             "Invalid message size: {} != {}",
             ciphertext.len(),
-            CipherState::BLOCK_SIZE_BYTES
+            CipherContext::BLOCK_SIZE_BYTES
         );
         let plaintext = state.decode(ciphertext.try_into().expect(&err));
         plaintext.to_vec()
